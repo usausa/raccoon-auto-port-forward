@@ -31,5 +31,7 @@ internal sealed class SshSetting
 
     public int ReconnectDelay { get; set; } = 10;
 
+    public int ConnectTimeout { get; set; } = 15;
+
     public PortForwardsSetting[] PortForwards { get; set; } = default!;
 }

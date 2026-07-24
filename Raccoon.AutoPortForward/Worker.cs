@@ -13,6 +13,8 @@ internal sealed class Worker : BackgroundService
 
     private SshClient? client;
 
+    private TaskCompletionSource<bool>? disconnectSignal;
+
     public Worker(
         ILogger<Worker> log,
         IOptions<SshSetting> setting)
@@ -44,10 +46,20 @@ internal sealed class Worker : BackgroundService
 
                 if (client is not null)
                 {
+                    var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                    disconnectSignal = tcs;
+
                     while (client.IsConnected)
                     {
-                        await Task.Delay(1000, stoppingToken);
+                        var delayTask = Task.Delay(1000, stoppingToken);
+                        var completed = await Task.WhenAny(tcs.Task, delayTask);
+                        if (completed == tcs.Task)
+                        {
+                            break;
+                        }
                     }
+
+                    disconnectSignal = null;
                 }
             }
             catch (Exception e)
@@ -67,7 +79,10 @@ internal sealed class Worker : BackgroundService
     {
         try
         {
-            var ci = new ConnectionInfo(setting.Host, setting.Port, setting.Username, new PrivateKeyAuthenticationMethod(setting.Username, new PrivateKeyFile(setting.PrivateKey, setting.Passphrase)));
+            var ci = new ConnectionInfo(setting.Host, setting.Port, setting.Username, new PrivateKeyAuthenticationMethod(setting.Username, new PrivateKeyFile(setting.PrivateKey, setting.Passphrase)))
+            {
+                Timeout = TimeSpan.FromSeconds(setting.ConnectTimeout)
+            };
             if (setting.DisableCompression)
             {
                 ci.CompressionAlgorithms.Clear();
@@ -84,6 +99,7 @@ internal sealed class Worker : BackgroundService
 
             log.InfoClientConnected();
 
+            var forwardedPorts = new List<ForwardedPort>(setting.PortForwards.Length);
             foreach (var forward in setting.PortForwards)
             {
 #pragma warning disable CA2000
@@ -92,8 +108,10 @@ internal sealed class Worker : BackgroundService
                     : new ForwardedPortLocal(forward.BoundHost, forward.BoundPort, forward.Host, forward.Port);
 #pragma warning restore CA2000
                 client.AddForwardedPort(forwardedPort);
-                forwardedPort.Start();
+                forwardedPorts.Add(forwardedPort);
             }
+
+            Parallel.ForEach(forwardedPorts, forwardedPort => forwardedPort.Start());
         }
         catch (Exception e)
         {
@@ -108,5 +126,7 @@ internal sealed class Worker : BackgroundService
     private void ClientOnErrorOccurred(object? sender, ExceptionEventArgs e)
     {
         log.ErrorErrorOccurred(e.Exception);
+
+        disconnectSignal?.TrySetResult(true);
     }
 }
