@@ -6,11 +6,11 @@
     <File Path="AGENTS.md" />
     <File Path="Analyzers.ruleset" />
     <File Path="CLAUDE.md" />
-    <File Path="AutoPortFoward.sln.DotSettings" />
     <File Path="Directory.Build.props" />
     <File Path="Directory.Build.targets" />
     <File Path="LICENSE" />
+    <File Path="Raccoon.AutoPortFoward.sln.DotSettings" />
     <File Path="README.md" />
   </Folder>
-  <Project Path="AutoPortForward/AutoPortForward.csproj" />
+  <Project Path="Raccoon.AutoPortForward/Raccoon.AutoPortForward.csproj" />
 </Solution>

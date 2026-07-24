@@ -1,4 +1,4 @@
-namespace AutoPortForward;
+namespace Raccoon.AutoPortForward;
 
 using Microsoft.Extensions.Options;
 
