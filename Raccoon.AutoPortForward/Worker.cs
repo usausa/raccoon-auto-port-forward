@@ -47,9 +47,9 @@ internal sealed class Worker : BackgroundService
                 if (client is not null)
                 {
                     var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-                    disconnectSignal = tcs;
+                    Volatile.Write(ref disconnectSignal, tcs);
 
-                    while (client.IsConnected)
+                    while (client.IsConnected && !stoppingToken.IsCancellationRequested)
                     {
                         var delayTask = Task.Delay(1000, stoppingToken);
                         var completed = await Task.WhenAny(tcs.Task, delayTask);
@@ -58,19 +58,35 @@ internal sealed class Worker : BackgroundService
                             break;
                         }
                     }
-
-                    disconnectSignal = null;
                 }
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
             }
             catch (Exception e)
             {
                 log.ErrorUnhandledException(e);
             }
+            finally
+            {
+                Volatile.Write(ref disconnectSignal, null);
 
-            client?.Dispose();
-            client = null;
+                client?.Dispose();
+                client = null;
+            }
 
-            await Task.Delay(reconnectDelay, stoppingToken);
+            if (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
+
+            try
+            {
+                await Task.Delay(reconnectDelay, stoppingToken);
+            }
+            catch (OperationCanceledException)
+            {
+            }
         }
     }
 #pragma warning restore CA1031
@@ -113,6 +129,12 @@ internal sealed class Worker : BackgroundService
 
             Parallel.ForEach(forwardedPorts, forwardedPort => forwardedPort.Start());
         }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            client?.Dispose();
+            client = null;
+            throw;
+        }
         catch (Exception e)
         {
             log.ErrorConnectFailed(e);
@@ -127,6 +149,6 @@ internal sealed class Worker : BackgroundService
     {
         log.ErrorErrorOccurred(e.Exception);
 
-        disconnectSignal?.TrySetResult(true);
+        Volatile.Read(ref disconnectSignal)?.TrySetResult(true);
     }
 }
