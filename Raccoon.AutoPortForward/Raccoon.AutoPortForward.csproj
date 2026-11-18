@@ -3,7 +3,6 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net11.0</TargetFramework>
-    <CodeAnalysisRuleSet>..\Analyzers.ruleset</CodeAnalysisRuleSet>
     <UserSecretsId>02380c42-8c79-4aa3-873b-4f4d14d46fa5</UserSecretsId>
   </PropertyGroup>
 
