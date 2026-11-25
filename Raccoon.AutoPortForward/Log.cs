@@ -22,6 +22,9 @@ internal static partial class Log
     [LoggerMessage(Level = LogLevel.Warning, Message = "Client disposal failed because the SSH session was already unavailable. exceptionType=[{exceptionType}]")]
     public static partial void WarningClientDisposalFailed(this ILogger logger, Exception ex, string exceptionType);
 
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Forwarded port stop failed. exceptionType=[{exceptionType}]")]
+    public static partial void WarningPortStopFailed(this ILogger logger, Exception ex, string exceptionType);
+
     // Error
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Connect failed.")]

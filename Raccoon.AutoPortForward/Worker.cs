@@ -1,5 +1,7 @@
 namespace Raccoon.AutoPortForward;
 
+using System.Net.Sockets;
+
 using Microsoft.Extensions.Options;
 
 using Renci.SshNet;
@@ -154,11 +156,31 @@ internal sealed class Worker : BackgroundService
 
         currentClient.ErrorOccurred -= ClientOnErrorOccurred;
 
+        foreach (var forwardedPort in currentClient.ForwardedPorts)
+        {
+            try
+            {
+                forwardedPort.Stop();
+            }
+            catch (SshException e)
+            {
+                log.WarningPortStopFailed(e, e.GetType().Name);
+            }
+            catch (SocketException e)
+            {
+                log.WarningPortStopFailed(e, e.GetType().Name);
+            }
+        }
+
         try
         {
             currentClient.Dispose();
         }
         catch (SshException e)
+        {
+            log.WarningClientDisposalFailed(e, e.GetType().Name);
+        }
+        catch (SocketException e)
         {
             log.WarningClientDisposalFailed(e, e.GetType().Name);
         }
